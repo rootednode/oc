@@ -7,6 +7,8 @@ module.exports = (app) => {
   // Import the Express module to create an instance of the Express.js framework
   const express = require("express");
 
+
+
   // Import the collection controller module, which handles database operations
   const collection = require("../controllers/collection.controller.js");
 
@@ -27,6 +29,7 @@ module.exports = (app) => {
    * @param {number} id - The ID of the collection item to retrieve
    * @returns {Object} The collection object with the matching ID
    */
+  router.get("/get-one-raw/:id", collection.findOneRaw);
   router.get("/get-one/:id", collection.findOne);
 
   /**

@@ -1,6 +1,4 @@
 const db = require("../models");
-const Survey = db.collection;
-const Modules = db.modules;
 const Users = db.users;
 const Tokens = db.tokens;
 const Op = db.Sequelize.Op;
@@ -9,105 +7,6 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
 const SECRET_KEY = 'your_secret_key'; // Replace with your actual secret key
-
-
-
-
-// Function to find pages for a given id
-function getPagesById(id, modules) {
-  // Find the module with the matching id
-  const module = modules.find((mod) => mod.dataValues.id === id);
-
-  if (!module) {
-    console.log(`Module with id ${id} not found.`);
-    return null;
-  }
-
-  // Parse the content field
-  const content = JSON.parse(module.dataValues.content);
-
-  // Return the pages
-  return content.pages;
-}
-
-
-
-
-// Function to update collection content with modules
-function updateCollectionWithModules(collection, modules) {
-  // Parse the collection content
-  const parsedSurvey = JSON.parse(collection.dataValues.content);
-
-  // Create a map for quick module lookup
-  const moduleMap = modules.reduce((map, module) => {
-    const id = module.dataValues.id;
-    const moduleContent = JSON.parse(module.dataValues.content);
-    map[id] = moduleContent;
-    return map;
-  }, {});
-
-  // Traverse survey pages and elements to update fields
-  parsedSurvey.pages.forEach((page) => {
-    page.elements.forEach((element) => {
-      if (element.title && element.title.startsWith("@")) {
-        // Extract the module id and question name
-				console.log('matching:', element.title);
-        const match = element.title.match(/^@(\d+):([\w-]+)/);
-        if (match) {
-          const moduleId = parseInt(match[1], 10);
-          const questionName = match[2];
-
-          console.log(`Processing element: ${element.title}`);
-          console.log(`Extracted moduleId: ${moduleId}, questionName: ${questionName}`);
-
-          // Look up the module by id
-          const moduleContent = moduleMap[moduleId];
-
-					console.log("Module Map:", JSON.stringify(moduleMap, null, 2));
-					console.log("Module Content:", JSON.stringify(moduleContent, null, 2));
-          if (moduleContent) {
-            // Find the corresponding question in the module
-            const matchingQuestion = moduleContent.pages
-              .flatMap((modulePage) => modulePage.elements)
-              .find((moduleElement) => moduleElement.name === questionName);
-
-            if (matchingQuestion) {
-              // Overwrite the element with the question data
-              console.log(`Found matching question in module:`, matchingQuestion);
-              Object.assign(element, matchingQuestion);
-              element.updatedFromModule = true; // Optional flag
-            } else {
-              console.log(`No matching question found in module ${moduleId} for name ${questionName}`);
-            }
-          } else {
-            console.log(`No module found with id ${moduleId}`);
-          }
-        } else {
-          console.log(`Title format invalid: ${element.title}`);
-        }
-      }
-    });
-  });
-
-  // Convert back to string and update the collection content
-  collection.dataValues.content = JSON.stringify(parsedSurvey, null, 2);
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 async function validateToken(token) {
   try {
@@ -118,12 +17,10 @@ async function validateToken(token) {
     });
 
     if (!tokenRecord) {
-			console.log('token not found');
       return { valid: false, error: 'Token not found' };
     }
 
     if (new Date() > tokenRecord.expiresAt) {
-			console.log('token expired');
       return { valid: false, error: 'Token expired' };
     }
 
@@ -134,13 +31,12 @@ async function validateToken(token) {
 
     if (!userRecord) {
       return { valid: false, error: 'User not found' };
-			console.log('user not found');
     }
 
     return { valid: true, userId: decoded.userId, admin: userRecord.admin };
 
   } catch (error) {
-    console.log('Error validating token:', error);
+    console.error('Error validating token:', error);
     return { valid: false, error: 'Invalid token' };
   }
 }
@@ -186,12 +82,12 @@ async function login(username, password) {
       return { error: 'Invalid password' };
     }
 
-    const token = jwt.sign({ userId: user.id }, SECRET_KEY, { expiresIn: '48h' });
+    const token = jwt.sign({ userId: user.id }, SECRET_KEY, { expiresIn: '1h' });
 
     await Tokens.create({
       userId: user.id,
       token: token,
-      expiresAt: new Date(Date.now() + (2*24*60*60*1000)), // 2 day expiry
+      expiresAt: new Date(Date.now() + 3600000), // 1 hour expiry
     });
 
     return { token: token, admin: user.admin };
@@ -218,9 +114,9 @@ async function logout(token) {
 
 // Create and Save a new survey
 exports.create = async (req, res) => {
-  if (!req.body.title) {
-    return res.status(400).send({ message: "Content can not be empty!" });
-  }
+  //if (!req.body.username) {
+  //  return res.status(400).send({ message: "Content can not be empty!" });
+  //}
 
   console.log('create', req.headers);
   const token = req.headers.authorization;
@@ -231,13 +127,16 @@ exports.create = async (req, res) => {
   }
 
   try {
-    const survey = {
-      title: req.body.title,
-      description: req.body.description,
+    const user = {
+      username: req.body.username,
+      password: req.body.password,
+      admin: req.body.admin,
       content: JSON.stringify(req.body.content),
     };
 
-    const data = await Survey.create(survey);
+
+		//createUser(req.body.username, req.body.password, req.body.admin);
+		const data = await Users.create(user);
     res.send(data);
   } catch (err) {
     res.status(500).send({ message: err.message || "Some error occurred while creating the Forms." });
@@ -256,7 +155,8 @@ exports.findAll = async (req, res) => {
 
   try {
     const condition = title ? { title: { [Op.like]: `%${title}%` } } : null;
-    const data = await Survey.findAll({ where: condition });
+//    const data = await Users.findAll({ where: condition });
+    const data = await Users.findAll({ attributes: ['id', 'username'] });
 
     if (data.length > 0) {
       res.send(data);
@@ -269,49 +169,6 @@ exports.findAll = async (req, res) => {
 };
 
 // Find a single survey with an id
-exports.findOneRaw = async (req, res) => {
-  const id = req.params.id;
-  const token = req.headers.authorization;
-  const validResult = await validateToken(token);
-
-  if (!validResult.valid) {
-    return res.status(403).send({ message: validResult.error || "Unauthorized" });
-  }
-
-  try {
-    const data = await Survey.findByPk(id);
-    if (data) {
-
-			console.log('findone');
-
-			//console.log(data);
-
-			try {
-    		//const modules = await Modules.findAll({ });
-				//const updatedsurvey = updateCollectionWithModules(data, modules);
-
-			} catch (error) {
-				console.log(error);
-			}
-			//const combined = await combineSurveyAndModules(data);
-
-  	  // Return the combined result
-	    //res.status(200).json({ survey, matchedModules });
-
-      res.send(data);
-      //res.send(updatedsurvey);
-
-    } else {
-			console.log('err');
-      res.status(404).send({ message: `Cannot find Form with id=${id}.` });
-    }
-  } catch (err) {
-    res.status(500).send({ message: `Error retrieving Form with id=${id}.` });
-  }
-};
-
-
-// Find a single survey with an id
 exports.findOne = async (req, res) => {
   const id = req.params.id;
   const token = req.headers.authorization;
@@ -322,30 +179,10 @@ exports.findOne = async (req, res) => {
   }
 
   try {
-    const data = await Survey.findByPk(id);
+    const data = await Users.findByPk(id);
     if (data) {
-
-			console.log('findone');
-
-			//console.log(data);
-
-			try {
-    		const modules = await Modules.findAll({ });
-				const updatedsurvey = updateCollectionWithModules(data, modules);
-
-			} catch (error) {
-				console.log(error);
-			}
-			//const combined = await combineSurveyAndModules(data);
-
-  	  // Return the combined result
-	    //res.status(200).json({ survey, matchedModules });
-
       res.send(data);
-      //res.send(updatedsurvey);
-
     } else {
-			console.log('err');
       res.status(404).send({ message: `Cannot find Form with id=${id}.` });
     }
   } catch (err) {
@@ -370,7 +207,7 @@ exports.updateOne = async (req, res) => {
   }
 
   try {
-    const num = await Survey.update({ content: newContent }, { where: { id: id } });
+    const num = await Users.update({ content: newContent }, { where: { id: id } });
     if (num == 1) {
       res.send({ message: "Form was updated successfully." });
     } else {
@@ -392,7 +229,7 @@ exports.deleteOne = async (req, res) => {
   }
 
   try {
-    const num = await Survey.destroy({ where: { id: id } });
+    const num = await Users.destroy({ where: { id: id } });
     if (num == 1) {
       res.send({ message: "Form was deleted successfully!" });
     } else {
@@ -414,7 +251,7 @@ exports.deleteAll = async (req, res) => {
   }
 
   try {
-    const nums = await Survey.destroy({ where: {}, truncate: false });
+    const nums = await Users.destroy({ where: {}, truncate: false });
     res.send({ message: `${nums} Forms were deleted successfully!` });
   } catch (err) {
     res.status(500).send({ message: err.message || "Some error occurred while removing all surveys." });

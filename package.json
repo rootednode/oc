@@ -11,11 +11,18 @@
   "license": "ISC",
   "dependencies": {
     "bcrypt": "^5.1.1",
+    "body-parser": "^1.20.2",
     "cors": "^2.8.5",
+    "csv-parser": "^3.1.0",
     "express": "^4.19.2",
+    "express-xml-bodyparser": "^0.3.0",
+    "install": "^0.13.0",
     "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
     "mysql2": "^3.9.4",
-    "sequelize": "^6.37.3"
+    "npm": "^10.8.2",
+    "sequelize": "^6.37.3",
+    "simple-bodyparser": "^1.0.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.0"

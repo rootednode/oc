@@ -6,7 +6,7 @@ const app = express(); // Creating an instance of the express application
 
 // CORS options configuration
 const corsOptions = {
-  origin: ['http://localhost:3000', 'http://10.254.0.6:3000'], // Specifying allowed origins
+  origin: ['http://localhost:3000', 'http://10.254.0.6:3000', 'http://orgchaos.co', 'http://orgchaos.co:3000'], // Specifying allowed origins
   credentials: true, // Enabling credentials
   optionSuccessStatus: 200, // Setting the success status for OPTIONS requests
 };
@@ -15,10 +15,14 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // Parse requests with content-type application/json
-app.use(express.json());
+//app.use(express.json());
+
+app.use(express.json({limit: '500mb'}));
+app.use(express.urlencoded({limit: '500mb'}));
 
 // Parse requests with content-type application/x-www-form-urlencoded
-app.use(express.urlencoded({ extended: true }));
+//app.use(express.urlencoded({ extended: true }));
+
 
 // Simple route for the root URL
 app.get("/", (req, res) => {
@@ -27,6 +31,10 @@ app.get("/", (req, res) => {
 
 // Importing and applying collection routes
 require("./app/routes/collectionRoutes")(app);
+
+require("./app/routes/tablesRoutes")(app);
+
+require("./app/routes/usersRoutes")(app);
 
 // Importing and applying result routes
 require("./app/routes/resultRoutes")(app);
@@ -42,9 +50,12 @@ db.sequelize.sync();
 // });
 
 // Setting the port for the application
-const PORT = process.env.PORT || 8099;
+const PORT = process.env.PORT || 3001;
 
 // Starting the server and listening for requests
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}.`); // Logging a message when the server starts
 });
+
+server.timeout = 300000;
+

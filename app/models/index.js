@@ -36,6 +36,8 @@ db.sequelize = sequelize;
 
 // Import and add the 'collection' model to the db object
 db.collection = require("./collection.model.js")(sequelize, Sequelize);
+db.modules = require("./modules.model.js")(sequelize, Sequelize);
+db.customtables = require("./customtables.model.js")(sequelize, Sequelize);
 
 // Import and add the 'result' model to the db object
 db.result = require("./result.model.js")(sequelize, Sequelize);
